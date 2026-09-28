@@ -1,0 +1,16 @@
+{
+  "name": "fittrack-180",
+  "version": "1.0.0",
+  "description": "FitTrack 180 - a 180-day fitness tracker (MCA college project)",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "dependencies": {
+    "express": "^5.2.1"
+  }
+}
