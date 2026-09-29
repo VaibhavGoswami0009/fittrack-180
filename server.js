@@ -354,6 +354,6 @@ app.post("/api/reset", (req, res) => {
 });
 
 // Start the server
-app.listen(PORT, () => {
+app.listen(PORT, "0.0.0.0", () => {
   console.log(`FitTrack 180 is running at http://localhost:${PORT}`);
 });
