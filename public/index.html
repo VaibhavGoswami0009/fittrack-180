@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>FitTrack 180</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="layout">
+
+    <!-- Left sidebar (becomes a bottom bar on mobile) -->
+    <aside class="sidebar">
+      <div class="brand">
+        <span class="logo">💪</span>
+        <div>
+          <h1>FitTrack 180</h1>
+          <p>180 Days. One Goal. One Transformation.</p>
+        </div>
+      </div>
+      <nav id="nav">
+        <button class="nav-btn active" data-page="dashboard">🏠 <span>Dashboard</span></button>
+        <button class="nav-btn" data-page="workout">🏋️ <span>Workout</span></button>
+        <button class="nav-btn" data-page="meals">🍽️ <span>Meals</span></button>
+        <button class="nav-btn" data-page="progress">📈 <span>Progress</span></button>
+        <button class="nav-btn" data-page="journey">🗓️ <span>Journey</span></button>
+        <button class="nav-btn" data-page="goal">⚙️ <span>Goal</span></button>
+      </nav>
+    </aside>
+
+    <main class="main">
+      <div class="mobile-title">
+        <b>FitTrack 180</b>
+        <small>180 Days. One Goal. One Transformation.</small>
+      </div>
+
+      <header class="topbar">
+        <div id="todayDate"></div>
+        <div class="user" id="userName"></div>
+      </header>
+
+      <!-- Messages (success / error) appear here -->
+      <div id="message" class="message hidden"></div>
+
+      <!-- ============ PAGE 1: DASHBOARD ============ -->
+      <section id="page-dashboard" class="page">
+        <div class="hero">
+          <div class="hero-left">
+            <h2 id="heroDay">DAY 1 / 180</h2>
+            <p>Your transformation is in progress. 💪</p>
+            <p id="heroGoal" class="hero-small"></p>
+            <div class="bar"><div class="fill" id="heroFill"></div></div>
+            <p id="heroText" class="hero-small"></p>
+          </div>
+          <div class="hero-quote">“Better. Stronger. Healthier.”</div>
+        </div>
+
+        <div class="cards" id="cards"></div>
+
+        <div class="grid3">
+          <div class="card">
+            <h3>✅ Today's Mission</h3>
+            <ul class="mission" id="missionList"></ul>
+            <div id="missionSummary"></div>
+          </div>
+          <div class="card">
+            <h3>📈 Weight Progress</h3>
+            <div class="js-weight"></div>
+          </div>
+          <div class="card">
+            <h3>🗓️ Your 180-Day Journey</h3>
+            <div class="journey mini js-journey"></div>
+            <div class="legend">
+              <span><i class="c-completed"></i>Completed</span>
+              <span><i class="c-partial"></i>Partial</span>
+              <span><i class="c-missed"></i>Missed</span>
+              <span><i class="c-future"></i>Future</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="grid2">
+          <div class="card">
+            <h3>🏋️ Today's Workout</h3>
+            <div class="js-workout"></div>
+          </div>
+          <div class="card">
+            <h3>🍽️ Today's Meals</h3>
+            <div class="js-meals"></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 2: WORKOUT ============ -->
+      <section id="page-workout" class="page hidden">
+        <h2 class="page-title">Workout</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Today's Workout</h3>
+            <div class="js-workout"></div>
+          </div>
+          <div class="card">
+            <h3>Workout History (last 7 days)</h3>
+            <ul class="checklist" id="workoutHistory"></ul>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 3: MEALS ============ -->
+      <section id="page-meals" class="page hidden">
+        <h2 class="page-title">Meals &amp; Nutrition</h2>
+        <div class="card" style="margin-bottom:16px">
+          <h3>Add a meal</h3>
+          <form id="mealForm" class="form-row">
+            <select id="mealType">
+              <option>Breakfast</option>
+              <option>Lunch</option>
+              <option>Dinner</option>
+            </select>
+            <input id="mealName" type="text" placeholder="Food / meal name" required>
+            <input id="mealCalories" type="number" min="0" placeholder="Calories (kcal)" required>
+            <input id="mealProtein" type="number" min="0" step="0.1" placeholder="Protein (g)" required>
+            <button class="btn" type="submit">+ Add Meal</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Today's Meals</h3>
+          <div class="js-meals"></div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 4: PROGRESS ============ -->
+      <section id="page-progress" class="page hidden">
+        <h2 class="page-title">Weight Progress</h2>
+        <div class="card" style="margin-bottom:16px">
+          <h3>Update today's weight</h3>
+          <form id="weightForm" class="form-row">
+            <input id="weightInput" type="number" step="0.1" min="1" placeholder="Current weight (kg)" required>
+            <button class="btn" type="submit">Save Weight</button>
+          </form>
+        </div>
+        <div class="card">
+          <h3>Your Progress</h3>
+          <div class="js-weight"></div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 5: JOURNEY ============ -->
+      <section id="page-journey" class="page hidden">
+        <h2 class="page-title">My 180-Day Journey</h2>
+        <div class="card">
+          <div class="journey full js-journey"></div>
+          <div class="legend">
+            <span><i class="c-completed"></i>Completed (workout + calories + protein)</span>
+            <span><i class="c-partial"></i>Partial</span>
+            <span><i class="c-missed"></i>Missed</span>
+            <span><i class="c-future"></i>Future</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============ PAGE 6: GOAL SETUP ============ -->
+      <section id="page-goal" class="page hidden">
+        <h2 class="page-title">Your 180-Day Goal</h2>
+        <div class="grid2">
+          <div class="card">
+            <h3>Set your goal</h3>
+            <form id="goalForm" class="form-grid">
+              <label>Your name
+                <input id="gName" type="text" placeholder="e.g. Vaibhav" required>
+              </label>
+              <label>Goal type
+                <select id="gType">
+                  <option>Fat Loss</option>
+                  <option>Muscle Gain</option>
+                  <option>Weight Gain</option>
+                  <option>Body Recomposition</option>
+                  <option>General Fitness</option>
+                </select>
+              </label>
+              <label>Starting weight (kg)
+                <input id="gStart" type="number" step="0.1" min="1" required>
+              </label>
+              <label>Target weight (kg)
+                <input id="gTarget" type="number" step="0.1" min="1" required>
+              </label>
+              <label>Daily calorie goal (kcal)
+                <input id="gCalories" type="number" min="1" value="2000" required>
+              </label>
+              <label>Daily protein goal (g)
+                <input id="gProtein" type="number" min="1" value="120" required>
+              </label>
+              <button class="btn" type="submit">Save Goal</button>
+            </form>
+            <p class="note">FitTrack 180 is a simple tracking tool. It does not give medical advice and cannot guarantee any body result. Results are different for every person.</p>
+          </div>
+          <div class="card">
+            <h3>Goal summary</h3>
+            <div class="js-summary"></div>
+            <hr>
+            <p class="note">Want to start again? This deletes all saved data.</p>
+            <button id="resetBtn" class="btn danger" type="button">Reset demo data</button>
+          </div>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
