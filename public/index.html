@@ -4,9 +4,30 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FitTrack 180</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>💪</text></svg>">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+  <!-- LOGIN SCREEN -->
+  <div id="loginScreen" class="login-screen">
+    <div class="login-card">
+      <div class="brand" style="justify-content:center; margin-bottom:20px;">
+        <span class="logo">💪</span>
+        <div>
+          <h1>FitTrack 180</h1>
+          <p>180 Days. One Goal. One Transformation.</p>
+        </div>
+      </div>
+      <h3 style="margin-bottom:10px;">Enter your name to continue</h3>
+      <p class="muted" style="margin-bottom:16px;">Each name has its own separate progress, so you and your friends can use this site without overwriting each other's data.</p>
+      <form id="loginForm" class="form-row">
+        <input id="loginName" type="text" placeholder="e.g. Vaibhav" required>
+        <button class="btn" type="submit">Continue</button>
+      </form>
+    </div>
+  </div>
+
   <div class="layout">
 
     <!-- Left sidebar (becomes a bottom bar on mobile) -->
@@ -25,6 +46,7 @@
         <button class="nav-btn" data-page="progress">📈 <span>Progress</span></button>
         <button class="nav-btn" data-page="journey">🗓️ <span>Journey</span></button>
         <button class="nav-btn" data-page="goal">⚙️ <span>Goal</span></button>
+        <button class="nav-btn" id="logoutBtn">🚪 <span>Switch User</span></button>
       </nav>
     </aside>
 
@@ -52,7 +74,7 @@
             <div class="bar"><div class="fill" id="heroFill"></div></div>
             <p id="heroText" class="hero-small"></p>
           </div>
-          <div class="hero-quote">“Better. Stronger. Healthier.”</div>
+          <div class="hero-quote">"Better. Stronger. Healthier."</div>
         </div>
 
         <div class="cards" id="cards"></div>
@@ -198,8 +220,8 @@
             <h3>Goal summary</h3>
             <div class="js-summary"></div>
             <hr>
-            <p class="note">Want to start again? This deletes all saved data.</p>
-            <button id="resetBtn" class="btn danger" type="button">Reset demo data</button>
+            <p class="note">Want to start again? This deletes all your saved data (not other users' data).</p>
+            <button id="resetBtn" class="btn danger" type="button">Reset my data</button>
           </div>
         </div>
       </section>

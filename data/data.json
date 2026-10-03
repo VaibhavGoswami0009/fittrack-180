@@ -1,6 +1,54 @@
 {
-  "profile": null,
-  "weights": [],
-  "workouts": {},
-  "meals": {}
+  "users": {
+    "vaibhav-goswami": {
+      "profile": {
+        "name": "Vaibhav Goswami",
+        "goalType": "Fat Loss",
+        "startWeight": 98,
+        "targetWeight": 80,
+        "calorieGoal": 2000,
+        "proteinGoal": 120,
+        "startDate": "2026-10-03"
+      },
+      "weights": [
+        {
+          "date": "2026-10-03",
+          "weight": 98
+        }
+      ],
+      "workouts": {
+        "2026-10-03": [
+          "Brisk Walk or Jog",
+          "Crunches"
+        ]
+      },
+      "meals": {}
+    },
+    "pratik": {
+      "profile": {
+        "name": "pratik",
+        "goalType": "Fat Loss",
+        "startWeight": 80,
+        "targetWeight": 70,
+        "calorieGoal": 2000,
+        "proteinGoal": 120,
+        "startDate": "2026-10-03"
+      },
+      "weights": [
+        {
+          "date": "2026-10-03",
+          "weight": 79
+        }
+      ],
+      "workouts": {
+        "2026-10-03": [
+          "Brisk Walk or Jog",
+          "Crunches",
+          "Leg Raises",
+          "Russian Twist"
+        ]
+      },
+      "meals": {}
+    }
+  }
 }

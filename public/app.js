@@ -1,13 +1,12 @@
 // app.js - the frontend brain of FitTrack 180
-// It asks the backend (server.js) for data using fetch(), then draws it on the page.
+// Now supports multiple users: each browser remembers its own username.
 
-let state = null; // the latest data from the server
+let state = null;
+let username = localStorage.getItem("fittrack_username") || null;
 
-// ---------- Small helper functions ----------
 function $(selector) { return document.querySelector(selector); }
 function $all(selector) { return document.querySelectorAll(selector); }
 
-// Makes user-typed text safe to put inside HTML
 function esc(text) {
   return String(text)
     .replace(/&/g, "&amp;")
@@ -21,17 +20,18 @@ function barHTML(percent, extraClass = "") {
 }
 
 // ---------- Talking to the backend ----------
-// This one function sends every request to the Express API.
+// Every API call (except /api/login) needs to say WHICH user it's for.
 async function api(url, method = "GET", body) {
+  const sep = url.includes("?") ? "&" : "?";
+  const fullUrl = url === "/api/login" ? url : `${url}${sep}user=${encodeURIComponent(username)}`;
   const options = { method, headers: { "Content-Type": "application/json" } };
   if (body) options.body = JSON.stringify(body);
-  const response = await fetch(url, options);
+  const response = await fetch(fullUrl, options);
   const data = await response.json();
   if (!response.ok) throw new Error(data.error || "Something went wrong");
   return data;
 }
 
-// Send a change to the server, then redraw the page with the new data
 async function send(url, method, body, successText) {
   try {
     state = await api(url, method, body);
@@ -40,7 +40,7 @@ async function send(url, method, body, successText) {
     return true;
   } catch (err) {
     showMessage(err.message, true);
-    renderAll(); // puts any ticked checkbox back to its real value
+    renderAll();
     return false;
   }
 }
@@ -52,6 +52,52 @@ async function loadState() {
   } catch (err) {
     showMessage("Cannot reach the server: " + err.message, true);
   }
+}
+
+// ---------- Login flow ----------
+function showLogin() {
+  $("#loginScreen").classList.remove("hidden");
+  $(".layout").classList.add("hidden-layout");
+}
+
+function hideLogin() {
+  $("#loginScreen").classList.add("hidden");
+  $(".layout").classList.remove("hidden-layout");
+}
+
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const name = $("#loginName").value.trim();
+  if (!name) return;
+  try {
+    const result = await api("/api/login", "POST", { username: name });
+    username = result.username;
+    localStorage.setItem("fittrack_username", username);
+    state = result.state;
+    hideLogin();
+    renderAll();
+    showPage("dashboard");
+  } catch (err) {
+    showMessage(err.message, true);
+  }
+});
+
+$("#logoutBtn").addEventListener("click", () => {
+  if (!confirm("Switch to a different user? You can log back in with the same name anytime.")) return;
+  localStorage.removeItem("fittrack_username");
+  username = null;
+  state = null;
+  showLogin();
+});
+
+async function start() {
+  if (!username) {
+    showLogin();
+    return;
+  }
+  hideLogin();
+  await loadState();
+  showPage("dashboard");
 }
 
 // ---------- Messages ----------
@@ -72,7 +118,7 @@ function showPage(name) {
   }
   $all(".page").forEach((p) => p.classList.add("hidden"));
   $("#page-" + name).classList.remove("hidden");
-  $all(".nav-btn").forEach((b) => b.classList.toggle("active", b.dataset.page === name));
+  $all(".nav-btn[data-page]").forEach((b) => b.classList.toggle("active", b.dataset.page === name));
   if (name === "goal") fillGoalForm();
   window.scrollTo(0, 0);
 }
@@ -95,7 +141,7 @@ function renderAll() {
   });
 
   if (!state || !state.profile) {
-    $("#userName").textContent = "👤 Guest";
+    $("#userName").textContent = username ? "👤 " + username : "👤 Guest";
     $all(".js-summary").forEach((el) => (el.innerHTML = '<p class="muted">Save your goal to see your summary.</p>'));
     return;
   }
@@ -180,7 +226,6 @@ function weightHTML() {
     ${graphHTML(w)}`;
 }
 
-// A simple line graph drawn with plain SVG (no chart library)
 function graphHTML(w) {
   const values = w.history.map((h) => h.weight);
   if (values.length === 0) return "";
@@ -295,26 +340,21 @@ function summaryHTML() {
 }
 
 // ---------- Listening for clicks and form submits ----------
-
-// Sidebar buttons
-$all(".nav-btn").forEach((btn) => {
+$all(".nav-btn[data-page]").forEach((btn) => {
   btn.addEventListener("click", () => showPage(btn.dataset.page));
 });
 
-// Tick / untick an exercise
 document.addEventListener("change", (e) => {
   if (e.target.dataset.exercise) {
     send("/api/workout/toggle", "POST", { exercise: e.target.dataset.exercise });
   }
 });
 
-// Delete a meal
 document.addEventListener("click", (e) => {
   const id = e.target.dataset.delete;
   if (id) send("/api/meals/" + id, "DELETE");
 });
 
-// Goal form
 $("#goalForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const ok = await send("/api/goal", "POST", {
@@ -328,7 +368,6 @@ $("#goalForm").addEventListener("submit", async (e) => {
   if (ok) showPage("dashboard");
 });
 
-// Meal form
 $("#mealForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const ok = await send("/api/meals", "POST", {
@@ -340,21 +379,19 @@ $("#mealForm").addEventListener("submit", async (e) => {
   if (ok) e.target.reset();
 });
 
-// Weight form
 $("#weightForm").addEventListener("submit", async (e) => {
   e.preventDefault();
   const ok = await send("/api/weight", "POST", { weight: $("#weightInput").value }, "Weight saved!");
   if (ok) e.target.reset();
 });
 
-// Reset button
 $("#resetBtn").addEventListener("click", async () => {
-  if (!confirm("This will delete ALL your data and start fresh. Continue?")) return;
+  if (!confirm("This will delete YOUR data and start fresh. Continue?")) return;
   try {
     await api("/api/reset", "POST");
     $("#goalForm").reset();
     await loadState();
-    showMessage("Demo data has been reset.");
+    showMessage("Your data has been reset.");
     showPage("goal");
   } catch (err) {
     showMessage(err.message, true);
@@ -362,4 +399,4 @@ $("#resetBtn").addEventListener("click", async () => {
 });
 
 // ---------- Start ----------
-loadState().then(() => showPage("dashboard"));
+start();

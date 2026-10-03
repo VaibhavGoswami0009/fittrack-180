@@ -232,3 +232,24 @@ input:not([type="checkbox"]), select {
   .hero-quote { display: none; }
   .journey.full { grid-template-columns: repeat(10, 1fr); gap: 6px; }
 }
+/* ---------- Login screen ---------- */
+.login-screen {
+  position: fixed; inset: 0;
+  background: var(--bg);
+  display: flex; align-items: center; justify-content: center;
+  z-index: 100;
+  padding: 20px;
+}
+.login-card {
+  background: var(--card);
+  border-radius: 18px;
+  padding: 32px;
+  max-width: 380px;
+  width: 100%;
+  box-shadow: 0 10px 30px rgba(15, 23, 42, 0.12);
+  text-align: center;
+}
+.login-card .form-row { flex-direction: column; }
+.login-card input { width: 100%; }
+.login-card .btn { width: 100%; }
+.hidden-layout { display: none !important; }

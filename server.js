@@ -1,5 +1,6 @@
 // server.js - the backend of FitTrack 180
 // It serves the website and provides API routes to read/save data.
+// Data is now stored PER USERNAME, so multiple people can use the same site separately.
 
 const express = require("express");
 const fs = require("fs");
@@ -10,9 +11,8 @@ const PORT = process.env.PORT || 3000;
 const DATA_FILE = path.join(__dirname, "data", "data.json");
 const TOTAL_DAYS = 180;
 
-// Middleware = small helpers that run on every request
-app.use(express.json()); // lets us read JSON sent by the browser
-app.use(express.static(path.join(__dirname, "public"))); // serves index.html, style.css, app.js
+app.use(express.json());
+app.use(express.static(path.join(__dirname, "public")));
 
 // ---------- Weekly workout plan (0 = Sunday ... 6 = Saturday) ----------
 const WEEK_PLAN = {
@@ -73,18 +73,31 @@ const WEEK_PLAN = {
   },
 };
 
-// ---------- Helper functions: reading and saving the JSON file ----------
-function emptyData() {
+// ---------- Helper: turn a typed name into a safe, consistent key ----------
+function normalizeUsername(raw) {
+  return String(raw || "").trim().toLowerCase().replace(/\s+/g, "-").slice(0, 40);
+}
+
+// ---------- Helper functions: reading and saving the WHOLE file ----------
+function emptyUserData() {
   return { profile: null, weights: [], workouts: {}, meals: {} };
 }
 
-function readData() {
-  if (!fs.existsSync(DATA_FILE)) return emptyData();
-  return JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+function readAll() {
+  if (!fs.existsSync(DATA_FILE)) return { users: {} };
+  const raw = JSON.parse(fs.readFileSync(DATA_FILE, "utf8"));
+  if (!raw.users) return { users: {} }; // handles old single-user file format
+  return raw;
 }
 
-function writeData(data) {
-  fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2));
+function writeAll(all) {
+  fs.writeFileSync(DATA_FILE, JSON.stringify(all, null, 2));
+}
+
+// Get one user's data, creating an empty record if they're new
+function getUser(all, username) {
+  if (!all.users[username]) all.users[username] = emptyUserData();
+  return all.users[username];
 }
 
 // ---------- Helper functions: dates (format is YYYY-MM-DD) ----------
@@ -136,18 +149,14 @@ function getDayResult(data, dateStr) {
     meals,
     calories,
     protein,
-    // Rest day counts as a finished workout
     workoutOk: plan.exercises.length === 0 || doneExercises.length >= plan.exercises.length,
-    calorieOk: calories >= profile.calorieGoal * 0.9, // at least 90% of the calorie goal
+    calorieOk: calories >= profile.calorieGoal * 0.9,
     proteinOk: protein >= profile.proteinGoal,
     weightOk: weightLogged,
     hasActivity: doneExercises.length > 0 || meals.length > 0 || weightLogged,
   };
 }
 
-// completed = workout + calories + protein all done
-// partial   = something was done
-// missed    = past day with nothing done
 function getDayStatus(data, dateStr, today) {
   if (dateStr > today) return "future";
   const r = getDayResult(data, dateStr);
@@ -156,7 +165,7 @@ function getDayStatus(data, dateStr, today) {
   return dateStr < today ? "missed" : "pending";
 }
 
-// ---------- Build everything the frontend needs in one object ----------
+// ---------- Build everything the frontend needs, for ONE user ----------
 function buildState(data) {
   if (!data.profile) return { profile: null };
 
@@ -164,7 +173,6 @@ function buildState(data) {
   const today = todayString();
   const dayNumber = Math.min(TOTAL_DAYS, Math.max(1, daysBetween(profile.startDate, today) + 1));
 
-  // 180-day journey
   const journey = [];
   for (let i = 0; i < TOTAL_DAYS; i++) {
     const date = addDays(profile.startDate, i);
@@ -177,7 +185,6 @@ function buildState(data) {
   }
   const daysCompleted = journey.filter((d) => d.status === "completed").length;
 
-  // Streak = completed days in a row (today counts only if it is completed)
   let streak = 0;
   let i = dayNumber - 1;
   if (journey[i].status !== "completed") i--;
@@ -186,7 +193,6 @@ function buildState(data) {
     i--;
   }
 
-  // Today
   const t = getDayResult(data, today);
   const tasks = [
     { label: "Complete today's workout", done: t.workoutOk },
@@ -196,11 +202,9 @@ function buildState(data) {
   ];
   const tasksDone = tasks.filter((x) => x.done).length;
 
-  // Weights
   const weights = data.weights.slice().sort((a, b) => a.date.localeCompare(b.date));
   const currentWeight = weights.length ? weights[weights.length - 1].weight : profile.startWeight;
 
-  // Workout for today + last 7 days history
   const exercises = t.plan.exercises.map((e) => ({ ...e, done: t.doneExercises.includes(e.name) }));
   const history = [];
   for (let k = 6; k >= 0; k--) {
@@ -244,15 +248,37 @@ function buildState(data) {
   };
 }
 
+// ---------- Middleware: read the username from every request ----------
+// The frontend sends it as ?user=somename on every API call.
+function requireUser(req, res, next) {
+  const username = normalizeUsername(req.query.user);
+  if (!username) return res.status(400).json({ error: "Please log in first." });
+  req.username = username;
+  next();
+}
+
 // =====================  API ROUTES  =====================
 
-// Get everything (used to draw the whole dashboard)
-app.get("/api/state", (req, res) => {
-  res.json(buildState(readData()));
+// Log in (or create a new user if the name hasn't been used before)
+app.post("/api/login", (req, res) => {
+  const username = normalizeUsername(req.body.username);
+  if (!username) return res.status(400).json({ error: "Please enter a name." });
+
+  const all = readAll();
+  const user = getUser(all, username);
+  writeAll(all);
+  res.json({ username, state: buildState(user) });
+});
+
+// Get everything for the logged-in user
+app.get("/api/state", requireUser, (req, res) => {
+  const all = readAll();
+  const user = getUser(all, req.username);
+  res.json(buildState(user));
 });
 
 // Create or update the goal
-app.post("/api/goal", (req, res) => {
+app.post("/api/goal", requireUser, (req, res) => {
   const goalTypes = ["Fat Loss", "Muscle Gain", "Weight Gain", "Body Recomposition", "General Fitness"];
   const name = String(req.body.name || "").trim();
   const goalType = req.body.goalType;
@@ -266,25 +292,26 @@ app.post("/api/goal", (req, res) => {
   if (!(startWeight > 0) || !(targetWeight > 0)) return res.status(400).json({ error: "Enter valid weights." });
   if (!(calorieGoal > 0) || !(proteinGoal > 0)) return res.status(400).json({ error: "Enter valid calorie and protein goals." });
 
-  const data = readData();
-  if (!data.profile) {
-    // First time: start the 180 days today
-    data.profile = { name, goalType, startWeight, targetWeight, calorieGoal, proteinGoal, startDate: todayString() };
-    data.weights = [{ date: todayString(), weight: startWeight }];
+  const all = readAll();
+  const user = getUser(all, req.username);
+
+  if (!user.profile) {
+    user.profile = { name, goalType, startWeight, targetWeight, calorieGoal, proteinGoal, startDate: todayString() };
+    user.weights = [{ date: todayString(), weight: startWeight }];
   } else {
-    // Editing: keep the start date and history
-    Object.assign(data.profile, { name, goalType, startWeight, targetWeight, calorieGoal, proteinGoal });
-    const first = data.weights.find((w) => w.date === data.profile.startDate);
+    Object.assign(user.profile, { name, goalType, startWeight, targetWeight, calorieGoal, proteinGoal });
+    const first = user.weights.find((w) => w.date === user.profile.startDate);
     if (first) first.weight = startWeight;
   }
-  writeData(data);
-  res.json(buildState(data));
+  writeAll(all);
+  res.json(buildState(user));
 });
 
 // Tick / untick an exercise for today
-app.post("/api/workout/toggle", (req, res) => {
-  const data = readData();
-  if (!data.profile) return res.status(400).json({ error: "Set your goal first." });
+app.post("/api/workout/toggle", requireUser, (req, res) => {
+  const all = readAll();
+  const user = getUser(all, req.username);
+  if (!user.profile) return res.status(400).json({ error: "Set your goal first." });
 
   const today = todayString();
   const plan = WEEK_PLAN[new Date().getDay()];
@@ -293,16 +320,17 @@ app.post("/api/workout/toggle", (req, res) => {
     return res.status(400).json({ error: "That exercise is not in today's plan." });
   }
 
-  const list = data.workouts[today] || [];
-  data.workouts[today] = list.includes(exercise) ? list.filter((n) => n !== exercise) : [...list, exercise];
-  writeData(data);
-  res.json(buildState(data));
+  const list = user.workouts[today] || [];
+  user.workouts[today] = list.includes(exercise) ? list.filter((n) => n !== exercise) : [...list, exercise];
+  writeAll(all);
+  res.json(buildState(user));
 });
 
 // Add a meal for today
-app.post("/api/meals", (req, res) => {
-  const data = readData();
-  if (!data.profile) return res.status(400).json({ error: "Set your goal first." });
+app.post("/api/meals", requireUser, (req, res) => {
+  const all = readAll();
+  const user = getUser(all, req.username);
+  if (!user.profile) return res.status(400).json({ error: "Set your goal first." });
 
   const type = req.body.type;
   const name = String(req.body.name || "").trim();
@@ -315,41 +343,45 @@ app.post("/api/meals", (req, res) => {
   if (!Number.isFinite(protein) || protein < 0) return res.status(400).json({ error: "Enter valid protein." });
 
   const today = todayString();
-  if (!data.meals[today]) data.meals[today] = [];
-  data.meals[today].push({ id: Date.now(), type, name, calories, protein });
-  writeData(data);
-  res.json(buildState(data));
+  if (!user.meals[today]) user.meals[today] = [];
+  user.meals[today].push({ id: Date.now(), type, name, calories, protein });
+  writeAll(all);
+  res.json(buildState(user));
 });
 
 // Delete a meal
-app.delete("/api/meals/:id", (req, res) => {
-  const data = readData();
+app.delete("/api/meals/:id", requireUser, (req, res) => {
+  const all = readAll();
+  const user = getUser(all, req.username);
   const today = todayString();
   const id = Number(req.params.id);
-  data.meals[today] = (data.meals[today] || []).filter((m) => m.id !== id);
-  writeData(data);
-  res.json(buildState(data));
+  user.meals[today] = (user.meals[today] || []).filter((m) => m.id !== id);
+  writeAll(all);
+  res.json(buildState(user));
 });
 
 // Save today's weight
-app.post("/api/weight", (req, res) => {
-  const data = readData();
-  if (!data.profile) return res.status(400).json({ error: "Set your goal first." });
+app.post("/api/weight", requireUser, (req, res) => {
+  const all = readAll();
+  const user = getUser(all, req.username);
+  if (!user.profile) return res.status(400).json({ error: "Set your goal first." });
 
   const weight = Number(req.body.weight);
   if (!(weight > 0)) return res.status(400).json({ error: "Enter a valid weight." });
 
   const today = todayString();
-  const existing = data.weights.find((w) => w.date === today);
+  const existing = user.weights.find((w) => w.date === today);
   if (existing) existing.weight = weight;
-  else data.weights.push({ date: today, weight });
-  writeData(data);
-  res.json(buildState(data));
+  else user.weights.push({ date: today, weight });
+  writeAll(all);
+  res.json(buildState(user));
 });
 
-// Reset all demo data
-app.post("/api/reset", (req, res) => {
-  writeData(emptyData());
+// Reset ONLY this user's data
+app.post("/api/reset", requireUser, (req, res) => {
+  const all = readAll();
+  all.users[req.username] = emptyUserData();
+  writeAll(all);
   res.json({ ok: true });
 });
 
